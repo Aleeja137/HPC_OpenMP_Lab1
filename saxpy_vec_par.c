@@ -11,9 +11,8 @@ void saxpy_no_simd( float *X, float *Y, int i, float a){
   Y[i] = a * X[i] + Y[i];
 }
 
-// #pragma omp declare simd 
 #pragma omp declare simd aligned(X,Y:256) uniform(a,X) linear(i : 1) notinbranch
-void saxpy (float *restrict X, float *restrict Y, int i, float a) {
+void saxpy (float *X, float *Y, int i, float a) {
   Y[i] = a * X[i] + Y[i];
 }
 
@@ -22,7 +21,6 @@ float saxpyi_no_simd( float x, float y, float a){
   return a * x + y;
 }
 
-// #pragma omp declare simd 
 #pragma omp declare simd uniform(a,x,y) notinbranch 
 float saxpyi( float x, float y, float a){
   return a * x + y;
@@ -30,7 +28,7 @@ float saxpyi( float x, float y, float a){
 
 
 #define N     128*131072
-#define NREPS     100
+#define NREPS     1000 // <----- I added one zero to get an order os secondS, as the lab statement says
 
 float a[N] __attribute__ ((aligned(256)));
 float b[N] __attribute__ ((aligned(256)));
@@ -72,6 +70,7 @@ int main()
   init();
   startTime = clock_it();
   for (k = 0; k < NREPS;k++) {    
+    #pragma omp parallel for
     for(j= 0; j< N; j++){
       saxpy_no_simd(a, b, j, 4.0f);
     }
@@ -83,7 +82,7 @@ int main()
   init();
   startTime = clock_it();
   for (k = 0; k < NREPS;k++) {
-    #pragma omp parallel for
+    #pragma omp parallel for simd
     for(j= 0; j< N; j++){
       saxpy(a, b, j, 4.0f);
     }
@@ -95,6 +94,7 @@ int main()
   init();
   startTime = clock_it();
   for (k = 0; k < NREPS;k++) {
+    #pragma omp parallel for
     for(j= 0; j< N; j++){
       b[j] = saxpyi_no_simd(a[j], b[j], 4.0f);
     }
@@ -105,7 +105,7 @@ int main()
   init();
   startTime = clock_it();
   for (k = 0; k < NREPS;k++) {
-    #pragma omp parallel for
+    #pragma omp parallel for simd
     for(j= 0; j< N; j++){
       b[j] = saxpyi(a[j], b[j], 4.0f);
     }

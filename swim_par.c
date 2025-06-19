@@ -28,6 +28,7 @@ C     Execution time is linear in ITMAX.*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <assert.h>  // <- To avoid 'ignoring return value of ‘fscanf’' warning from the compiler
 
 #define N1 1335
 #define N2 1335
@@ -117,7 +118,7 @@ C*/
     UCHECK = 0.0;
     VCHECK = 0.0;
     
-    #pragma omp parallel for simd aligned(PNEW,UNEW,VNEW:256) reduction(+:PCHECK,UCHECK,VCHECK) private(JCHECK)
+    #pragma omp parallel for reduction(+:PCHECK,UCHECK,VCHECK) private(JCHECK)
     for(ICHECK=0; ICHECK<MNMIN; ICHECK++){
         for(JCHECK=0; JCHECK<MNMIN; JCHECK++){
             PCHECK = PCHECK + fabs(PNEW[ICHECK][JCHECK]);
@@ -166,15 +167,15 @@ C		compile time.*/
         printf("No se piede abrir el archivo\n");
         exit(1);
     }
-    fscanf(fpin, "%f", &DT);
-    fscanf(fpin, "%f", &DX);
-    fscanf(fpin, "%f", &DY);
-    fscanf(fpin, "%f", &A);
-    fscanf(fpin, "%f", &ALPHA);
-    fscanf(fpin, "%d", &ITMAX);
-    fscanf(fpin, "%d", &MPRINT);
-    fscanf(fpin, "%d", &M);
-    fscanf(fpin, "%d", &N);
+    assert(fscanf(fpin, "%f", &DT)==1);
+    assert(fscanf(fpin, "%f", &DX)==1);
+    assert(fscanf(fpin, "%f", &DY)==1);
+    assert(fscanf(fpin, "%f", &A)==1);
+    assert(fscanf(fpin, "%f", &ALPHA)==1);
+    assert(fscanf(fpin, "%d", &ITMAX)==1);
+    assert(fscanf(fpin, "%d", &MPRINT)==1);
+    assert(fscanf(fpin, "%d", &M)==1);
+    assert(fscanf(fpin, "%d", &N)==1);
     
     TDT = DT;
     MP1 = M+1;
@@ -188,7 +189,7 @@ C		compile time.*/
 
 /*C     INITIAL VALUES OF THE STREAM FUNCTION AND P*/
     
-    #pragma omp parallel for simd aligned(PSI,P:256) collapse(2) private(i,j)
+    #pragma omp parallel for collapse(2) private(i,j)
     for(i=0;i<MP1;i++)
         for(j=0;j<NP1;j++){
             PSI[i][j] = A*sin((i+.5)*DI)*sin((j+.5)*DJ);
@@ -197,7 +198,7 @@ C		compile time.*/
 
 /*C     INITIALIZE VELOCITIES*/
     
-    #pragma omp parallel for simd aligned(PSI,U,V:256) collapse(2) private(i,j)
+    #pragma omp parallel for collapse(2) private(i,j)
     for(i=0;i<M;i++)
         for(j=0;j<N;j++){
             U[i+1][j] = -1*(PSI[i+1][j+1]-PSI[i+1][j])/DY;
@@ -205,12 +206,12 @@ C		compile time.*/
 
 /*C     PERIODIC CONTINUATION*/
 
-    #pragma omp parallel for simd aligned(U,V:256) private(j)
+    #pragma omp parallel for private(j)
     for(j=0;j<N;j++){
         U[0][j] = U[M][j];
         V[M][j+1] = V[0][j+1];}
    
-    #pragma omp parallel for simd aligned(U,V:256) private(i)
+    #pragma omp parallel for private(i)
     for(i=0;i<M;i++){
         U[i+1][N] = U[i+1][0];
         V[i][0] = V[i][N];}
@@ -218,7 +219,7 @@ C		compile time.*/
     U[0][N] = U[M][0];
     V[M][0] = V[0][N];
     
-    #pragma omp parallel for simd aligned(U,V,P,UOLD,VOLD,POLD:256) collapse(2) private(i,j)
+    #pragma omp parallel for collapse(2) private(i,j)
     for(i=0;i<MP1;i++)
         for(j=0;j<NP1;j++){
             UOLD[i][j] = U[i][j];
@@ -235,7 +236,7 @@ void calc1(void){
     FSDX = 4.0/DX;
     FSDY = 4.0/DY;
 
-    #pragma omp parallel for simd aligned(CU,CV,Z,P,U,V,H:256) collapse(2) private(I,J)
+    #pragma omp parallel for collapse(2) private(I,J)
     for (I=0;I<M;I++)
         for(J=0;J<N;J++){
             CU[I+1][J]  = .5*(P[I+1][J]+P[I][J])*U[I+1][J];
@@ -246,14 +247,14 @@ void calc1(void){
 
 /*C     PERIODIC CONTINUATION*/
           
-    #pragma omp parallel for simd aligned(CU,CV,Z,H:256) private(J)
+    #pragma omp parallel for private(J)
     for(J=0;J<N;J++){
         CU[0][J] = CU[M][J];
         CV[M][J+1] = CV[0][J+1];
         Z[0][J+1] = Z[M][J+1];
         H[M][J] = H[0][J];}
   
-    #pragma omp parallel for simd aligned(CU,CV,Z,H:256) private(I)
+    #pragma omp parallel for private(I)
     for(I=0;I<M;I++){
         CU[I+1][N] = CU[I+1][0];
         CV[I][0] = CV[I][N];
@@ -275,7 +276,7 @@ void calc2(void){
     TDTSDX = TDT/DX;
     TDTSDY = TDT/DY;
 
-    #pragma omp parallel for simd aligned(UNEW,VNEW,PNEW,UOLD,VOLD,POLD,CU,CV,Z,H:256) collapse(2) private(I,J)
+    #pragma omp parallel for collapse(2) private(I,J)
     for(I=0;I<M;I++)
         for(J=0;J<N;J++){
             UNEW[I+1][J] = UOLD[I+1][J]+TDTS8*(Z[I+1][J+1]+Z[I+1][J])*(CV[I+1][J+1]+CV[I][J+1]+CV[I][J]+CV[I+1][J])-TDTSDX*(H[I+1][J]-H[I][J]);
@@ -285,13 +286,13 @@ void calc2(void){
     
 /*C     PERIODIC CONTINUATION*/
 
-    #pragma omp parallel for simd aligned(UNEW,VNEW,PNEW:256) private(J)
+    #pragma omp parallel for private(J)
     for(J=0;J<N;J++){
         UNEW[0][J] = UNEW[M][J];
         VNEW[M][J+1] = VNEW[0][J+1];
         PNEW[M][J] = PNEW[0][J];}
     
-    #pragma omp parallel for simd aligned(UNEW,VNEW,PNEW:256) private(I)
+    #pragma omp parallel for private(I)
     for(I=0;I<M;I++){
         UNEW[I+1][N] = UNEW[I+1][0];
         VNEW[I][0] = VNEW[I][N];
@@ -309,7 +310,7 @@ void calc3z(void){
     
     TDT = TDT+TDT;
     
-    #pragma omp parallel for simd aligned(U,V,P,UNEW,VNEW,PNEW,UOLD,VOLD,POLD:256) collapse(2) private(I,J)
+    #pragma omp parallel for collapse(2) private(I,J)
     for(I=0;I<MP1;I++)
         for(J=0;J<NP1;J++){
             UOLD[I][J] = U[I][J];
@@ -325,7 +326,7 @@ void calc3(void){
 /*C        TIME SMOOTHING AND UPDATE FOR NEXT CYCLE*/
     int I,J;
     
-    #pragma omp parallel for simd aligned(U,V,P,UNEW,VNEW,PNEW,UOLD,VOLD,POLD:256) collapse(2) private(I,J)
+    #pragma omp parallel for collapse(2) private(I,J)
     for(I=0;I<M;I++)
         for(J=0;J<N;J++){
             UOLD[I][J] = U[I][J]+ALPHA*(UNEW[I][J]-2.*U[I][J]+UOLD[I][J]);
@@ -337,7 +338,7 @@ void calc3(void){
 
 /*C     PERIODIC CONTINUATION*/
 
-    #pragma omp parallel for simd aligned(U,V,P,UOLD,VOLD,POLD:256) private(J)
+    #pragma omp parallel for private(J)
     for(J=0;J<N;J++){
         UOLD[M][J] = UOLD[0][J];
         VOLD[M][J] = VOLD[0][J];
@@ -346,7 +347,7 @@ void calc3(void){
         V[M][J] = V[0][J];
         P[M][J] = P[0][J];}
   
-    #pragma omp parallel for simd aligned(U,V,P,UOLD,VOLD,POLD:256) private(I)
+    #pragma omp parallel for private(I)
     for(I=0;I<M;I++){
         UOLD[I][N] = UOLD[I][0];
         VOLD[I][N] = VOLD[I][0];

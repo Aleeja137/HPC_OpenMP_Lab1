@@ -37,7 +37,7 @@ float temp;
 
    start = omp_get_wtime();
 
-   /* ==== >>> Original <<< ====
+   /* ==== >>> Original <<< ==== 
    for(i=0;i< NRA;i++)
    {
       for(j=0;j< NCB;j++)
@@ -67,13 +67,13 @@ float temp;
 
    /* Perform matrix multiply A.BT */
 
-   /* ==== >>> Vectorization without parallelization: m_vec_no_par (option 2) <<< ====
+   /* ==== >>> Vectorization without parallelization: m_vec_no_par (option 2, the one I used) <<< ==== 
    for(i=0;i< NRA;i++)
    {
       for(j=0;j< NCB;j++)
       {
 	      temp = 0.0;
-         #pragma omp simd aligned(a,b,d:256) safelen(16)
+         #pragma omp simd reduction(+:temp) aligned(a,b,d:256) safelen(16)
          for(k=0;k< NCA;k++)
          {
             temp += a[i][k] * b[j][k];
@@ -81,9 +81,9 @@ float temp;
 	      d[i][j] = temp;
       }
    }
-   // ==== >>> Vectorization without parallelization: m_vec_no_par (option 2) <<< ==== */
+   // ==== >>> Vectorization without parallelization: m_vec_no_par (option 2, the one I used) <<< ==== */
    
-   /* ==== >>> Parallelization without vectorization: m_no_vec_par <<< ====
+   /* ==== >>> Parallelization without vectorization: m_no_vec_par <<< ==== 
    #pragma omp parallel for collapse(2) private(i,j,k) schedule(static)
    for(i=0;i< NRA;i++)
    {
@@ -99,7 +99,7 @@ float temp;
    }
    // ==== >>> Parallelization without vectorization: m_no_vec_par <<< ==== */
 
-   /* ==== >>> Parallelization with vectorization: m_vec_par  <<< ==== */
+   /* ==== >>> Parallelization with vectorization: m_vec_par  <<< ====  */
    #pragma omp parallel for collapse(2) private(i,j,k) schedule(static)
    for(i=0;i< NRA;i++)
    {
